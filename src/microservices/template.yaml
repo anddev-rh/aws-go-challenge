@@ -3,18 +3,66 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   microservices
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 5
     MemorySize: 128
-
-    # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. Learn more here https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
     LoggingConfig:
       LogFormat: JSON
+
 Resources:
+  OrdersQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "OrdersQueue"
+
+  PaymentsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "PaymentsQueue"
+
+  OrdersFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: OrdersFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt PaymentsQueue.Arn
+
+  PaymentsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PaymentsFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt OrdersQueue.Arn
+
   ordersFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
     Properties:
@@ -23,15 +71,17 @@ Resources:
       Runtime: provided.al2023
       Architectures:
       - x86_64
+      Role: !GetAtt OrdersFunctionRole.Arn
       Events:
-        CatchAll:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        CreateOrder:
+          Type: Api
           Properties:
             Path: /orders
             Method: POST
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+      Environment:
         Variables:
-          PARAM1: VALUE
+          ORDERS_QUEUE_URL: !GetAtt OrdersQueue.QueueUrl
+
   paymentsFunction:
     Type: AWS::Serverless::Function
     Metadata:
@@ -42,29 +92,30 @@ Resources:
       Runtime: provided.al2023
       Architectures:
       - x86_64
+      Role: !GetAtt PaymentsFunctionRole.Arn
       Events:
-        CatchAll:
+        ProcessPayment:
           Type: Api
           Properties:
             Path: /payments
             Method: POST
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+      Environment:
         Variables:
-          PARAM1: VALUE
-            
+          PAYMENTS_QUEUE_URL: !GetAtt PaymentsQueue.QueueUrl
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   microservicesAPI:
-    Description: API Gateway endpoint URL for Prod environment for orders Function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/orders/"
-    Description: API Gateway endpoint URL for Prod environment for payments Function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/payments/"
+    Description: API Gateway endpoint URL for Prod environment
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
   ordersFunction:
-    Description: First Lambda Function ARN
+    Description: Orders Lambda Function ARN
     Value: !GetAtt ordersFunction.Arn
   ordersFunctionIamRole:
     Description: Implicit IAM Role created for orders function
-    Value: !GetAtt ordersFunctionRole.Arn
+    Value: !GetAtt OrdersFunctionRole.Arn
+  paymentsFunction:
+    Description: Payments Lambda Function ARN
+    Value: !GetAtt paymentsFunction.Arn
+  paymentsFunctionIamRole:
+    Description: Implicit IAM Role created for payments function
+    Value: !GetAtt PaymentsFunctionRole.Arn
