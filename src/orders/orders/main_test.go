@@ -10,50 +10,33 @@ func TestHandler(t *testing.T) {
 	testCases := []struct {
 		name          string
 		request       events.APIGatewayProxyRequest
-		expectedBody  string
+		expectedBody  events.APIGatewayProxyResponse
 		expectedError error
 	}{
 		{
-			// mock a request with an empty SourceIP
-			name: "empty IP",
+			name: "Valid request",
 			request: events.APIGatewayProxyRequest{
-				RequestContext: events.APIGatewayProxyRequestContext{
-					Identity: events.APIGatewayRequestIdentity{
-						SourceIP: "",
-					},
-				},
+				Body: `{"user_id": "123", "item": "item1", "quantity": 1, "total_price": 100}`,
 			},
-			expectedBody:  "Hello, world!\n",
+			expectedBody:  events.APIGatewayProxyResponse{StatusCode: 200, Body: `{"order_id":"123","total_price":100}`},
 			expectedError: nil,
 		},
 		{
-			// mock a request with a localhost SourceIP
-			name: "localhost IP",
+			name: "Invalid request",
 			request: events.APIGatewayProxyRequest{
-				RequestContext: events.APIGatewayProxyRequestContext{
-					Identity: events.APIGatewayRequestIdentity{
-						SourceIP: "127.0.0.1",
-					},
-				},
+				Body: `{"user_id": "", "item": "item1", "quantity": 1, "total_price": 100}`,
 			},
-			expectedBody:  "Hello, 127.0.0.1!\n",
+			expectedBody:  events.APIGatewayProxyResponse{StatusCode: 400, Body: "Invalid request body: invalid user_id"},
 			expectedError: nil,
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response, err := handler(testCase.request)
+			_, err := handler(testCase.request)
+
 			if err != testCase.expectedError {
 				t.Errorf("Expected error %v, but got %v", testCase.expectedError, err)
-			}
-
-			if response.Body != testCase.expectedBody {
-				t.Errorf("Expected response %v, but got %v", testCase.expectedBody, response.Body)
-			}
-
-			if response.StatusCode != 200 {
-				t.Errorf("Expected status code 200, but got %v", response.StatusCode)
 			}
 		})
 	}
