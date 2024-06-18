@@ -4,10 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/google/uuid"
+)
+
+var (
+	sqsClient *sqs.SQS
+	queueURL  = os.Getenv("ORDERS_QUEUE_URL")
 )
 
 type CreateOrderRequest struct {
@@ -20,6 +29,11 @@ type CreateOrderRequest struct {
 type CreateOrderEvent struct {
 	OrderID    string `json:"order_id"`
 	TotalPrice int64  `json:"total_price"`
+}
+
+func init() {
+	sess := session.Must(session.NewSession())
+	sqsClient = sqs.New(sess)
 }
 
 func validateCreateOrderRequest(body []byte) (*CreateOrderRequest, error) {
@@ -57,6 +71,19 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	myEvent := CreateOrderEvent{
 		OrderID:    uuid.New().String(),
 		TotalPrice: validatedRequest.TotalPrice,
+	}
+
+	eventBody, err := json.Marshal(myEvent)
+	if err != nil {
+		return events.APIGatewayProxyResponse{StatusCode: 500, Body: fmt.Sprintf("Error marshalling event: %v", err)}, nil
+	}
+
+	_, err = sqsClient.SendMessage(&sqs.SendMessageInput{
+		QueueUrl:    aws.String(queueURL),
+		MessageBody: aws.String(string(eventBody)),
+	})
+	if err != nil {
+		return events.APIGatewayProxyResponse{StatusCode: 500, Body: fmt.Sprintf("Error sending SQS message: %v", err)}, nil
 	}
 
 	myEventBytes, _ := json.Marshal(myEvent)
