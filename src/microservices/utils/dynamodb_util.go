@@ -9,9 +9,11 @@ import (
 
 var dynamoDBClient *dynamodb.DynamoDB
 
-func initDynamoDBClient() {
-	sess := session.Must(session.NewSession())
-	dynamoDBClient = dynamodb.New(sess)
+func InitDynamoDBClient() {
+	if dynamoDBClient == nil {
+		sess := session.Must(session.NewSession())
+		dynamoDBClient = dynamodb.New(sess)
+	}
 }
 
 func SaveToDynamoDB(tableName, orderID string, item interface{}) error {
@@ -21,8 +23,7 @@ func SaveToDynamoDB(tableName, orderID string, item interface{}) error {
 	}
 
 	if dynamoDBClient == nil {
-		sess := session.Must(session.NewSession())
-		dynamoDBClient = dynamodb.New(sess)
+		InitDynamoDBClient()
 	}
 
 	av["order_id"] = &dynamodb.AttributeValue{
