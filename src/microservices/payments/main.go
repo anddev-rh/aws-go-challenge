@@ -6,19 +6,18 @@ import (
 	"fmt"
 	"os"
 
+	"microservices/utils"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
 var (
 	sqsClient         *sqs.SQS
 	queueURL          = os.Getenv("PAYMENTS_QUEUE_URL")
-	dynamoDBClient    *dynamodb.DynamoDB
 	paymentsTableName = os.Getenv("PAYMENTS_TABLE_NAME")
 )
 
@@ -38,7 +37,6 @@ type ProcessPaymentsRequest struct {
 func init() {
 	sess := session.Must(session.NewSession())
 	sqsClient = sqs.New(sess)
-	dynamoDBClient = dynamodb.New(sess)
 }
 
 func validateProcessPaymentsRequest(body []byte) (*ProcessPaymentsRequest, error) {
@@ -57,25 +55,6 @@ func validateProcessPaymentsRequest(body []byte) (*ProcessPaymentsRequest, error
 	return &processPaymentsRequest, nil
 }
 
-func savePaymentToDynamoDB(processPaymentsRequest *ProcessPaymentsRequest) error {
-	av, err := dynamodbattribute.MarshalMap(processPaymentsRequest)
-	if err != nil {
-		return err
-	}
-
-	input := &dynamodb.PutItemInput{
-		Item:      av,
-		TableName: aws.String(paymentsTableName),
-	}
-
-	_, err = dynamoDBClient.PutItem(input)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	validatedRequest, err := validateProcessPaymentsRequest([]byte(request.Body))
 	if err != nil {
@@ -87,7 +66,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	validatedRequest.Status = StatusCompleted
 
-	err = savePaymentToDynamoDB(validatedRequest)
+	err = utils.SaveToDynamoDB(paymentsTableName, validatedRequest.OrderID, validatedRequest)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,

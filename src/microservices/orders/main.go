@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
+	"microservices/utils"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/google/uuid"
 )
@@ -19,7 +19,6 @@ import (
 var (
 	sqsClient       *sqs.SQS
 	queueURL        = os.Getenv("ORDERS_QUEUE_URL")
-	dynamoDBClient  *dynamodb.DynamoDB
 	ordersTableName = os.Getenv("ORDERS_TABLE_NAME")
 )
 
@@ -38,7 +37,6 @@ type CreateOrderEvent struct {
 func init() {
 	sess := session.Must(session.NewSession())
 	sqsClient = sqs.New(sess)
-	dynamoDBClient = dynamodb.New(sess)
 }
 
 func validateCreateOrderRequest(body []byte) (*CreateOrderRequest, error) {
@@ -64,34 +62,6 @@ func validateCreateOrderRequest(body []byte) (*CreateOrderRequest, error) {
 	return &createOrderRequest, nil
 }
 
-func saveOrderToDynamoDB(orderID string, createOrderRequest *CreateOrderRequest) error {
-	av, err := dynamodbattribute.MarshalMap(createOrderRequest)
-	if err != nil {
-		return err
-	}
-
-	if dynamoDBClient == nil {
-		sess := session.Must(session.NewSession())
-		dynamoDBClient = dynamodb.New(sess)
-	}
-
-	av["order_id"] = &dynamodb.AttributeValue{
-		S: aws.String(orderID),
-	}
-
-	input := &dynamodb.PutItemInput{
-		Item:      av,
-		TableName: aws.String(ordersTableName),
-	}
-
-	_, err = dynamoDBClient.PutItem(input)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	validatedRequest, err := validateCreateOrderRequest([]byte(request.Body))
 	if err != nil {
@@ -106,7 +76,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		TotalPrice: validatedRequest.TotalPrice,
 	}
 
-	err = saveOrderToDynamoDB(myEvent.OrderID, validatedRequest)
+	err = utils.SaveToDynamoDB(ordersTableName, myEvent.OrderID, validatedRequest)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
