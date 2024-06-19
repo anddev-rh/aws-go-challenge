@@ -86,9 +86,8 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{StatusCode: 500, Body: fmt.Sprintf("Error sending SQS message: %v", err)}, nil
 	}
 
-	myEventBytes, _ := json.Marshal(myEvent)
 	return events.APIGatewayProxyResponse{
-		Body:       string(myEventBytes),
+		Body:       string(eventBody),
 		StatusCode: 200,
 	}, nil
 }

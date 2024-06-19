@@ -16,7 +16,7 @@ func TestHandler(t *testing.T) {
 		{
 			name: "Valid request",
 			request: events.APIGatewayProxyRequest{
-				Body: `{"user_id": "123", "item": "item1", "quantity": 1, "total_price": 100}`,
+				Body: `{order_id: "123", status: "pending"}`,
 			},
 			expectedBody:  events.APIGatewayProxyResponse{StatusCode: 200, Body: `{"order_id":"123","total_price":100}`},
 			expectedError: nil,

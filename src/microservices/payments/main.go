@@ -4,9 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
+)
+
+var (
+	sqsClient *sqs.SQS
+	queueURL  = os.Getenv("PAYMENTS_QUEUE_URL")
 )
 
 type Status string
@@ -20,6 +29,11 @@ const (
 type ProcesspaymentsRequest struct {
 	OrderID string `json:"order_id"`
 	Status  Status `json:"status"`
+}
+
+func init() {
+	sess := session.Must(session.NewSession())
+	sqsClient = sqs.New(sess)
 }
 
 func validateProcesspaymentsRequest(body []byte) (*ProcesspaymentsRequest, error) {
@@ -52,9 +66,21 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		Status:  StatusCompleted,
 	}
 
-	myEventBytes, _ := json.Marshal(myEvent)
+	eventBody, err := json.Marshal(myEvent)
+	if err != nil {
+		return events.APIGatewayProxyResponse{StatusCode: 500, Body: fmt.Sprintf("Error marshalling event: %v", err)}, nil
+	}
+
+	_, err = sqsClient.SendMessage(&sqs.SendMessageInput{
+		QueueUrl:    aws.String(queueURL),
+		MessageBody: aws.String(string(eventBody)),
+	})
+	if err != nil {
+		return events.APIGatewayProxyResponse{StatusCode: 500, Body: fmt.Sprintf("Error sending SQS message: %v", err)}, nil
+	}
+
 	return events.APIGatewayProxyResponse{
-		Body:       string(myEventBytes),
+		Body:       string(eventBody),
 		StatusCode: 200,
 	}, nil
 }
