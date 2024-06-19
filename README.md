@@ -1,7 +1,7 @@
 # AWS Serverless Microservices with GO challenge
 
 
-- To run in local or deploy Follow this [guide](./README.md) from AWS SAM proyects
+- To run in local or deploy Follow this [guide](./src/microservices/README.md) from AWS SAM proyects
 
 ### Create an IAM User
 
