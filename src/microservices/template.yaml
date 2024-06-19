@@ -21,6 +21,30 @@ Resources:
     Properties:
       QueueName: "PaymentsQueue"
 
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OrdersTable
+      AttributeDefinitions:
+        - AttributeName: order_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: order_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  PaymentsServiceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: PaymentsServiceTable
+      AttributeDefinitions:
+        - AttributeName: order_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: order_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
   OrdersFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -36,6 +60,12 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt OrdersTable.Arn
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
@@ -56,6 +86,14 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: 
+                  - !GetAtt OrdersTable.Arn
+                  - !GetAtt PaymentsServiceTable.Arn
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
@@ -81,6 +119,7 @@ Resources:
       Environment:
         Variables:
           ORDERS_QUEUE_URL: !GetAtt OrdersQueue.QueueUrl
+          ORDERS_TABLE_NAME: !Ref OrdersTable
 
   paymentsFunction:
     Type: AWS::Serverless::Function
@@ -102,6 +141,7 @@ Resources:
       Environment:
         Variables:
           PAYMENTS_QUEUE_URL: !GetAtt PaymentsQueue.QueueUrl
+          PAYMENTS_TABLE_NAME: !Ref PaymentsServiceTable
 
 Outputs:
   microservicesAPI:
