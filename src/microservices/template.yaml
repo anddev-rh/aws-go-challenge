@@ -39,7 +39,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
-                Resource: !GetAtt PaymentsQueue.Arn
+                Resource: !GetAtt OrdersQueue.Arn
 
   PaymentsFunctionRole:
     Type: AWS::IAM::Role
@@ -59,7 +59,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
-                Resource: !GetAtt OrdersQueue.Arn
+                Resource: !GetAtt PaymentsQueue.Arn
 
   ordersFunction:
     Type: AWS::Serverless::Function
