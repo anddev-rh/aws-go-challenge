@@ -17,7 +17,7 @@ import (
 
 var (
 	sqsClient         *sqs.SQS
-	queueURL          = os.Getenv("PAYMENTS_QUEUE_URL")
+	queueURL          = os.Getenv("ORDERS_QUEUE_URL")
 	paymentsTableName = os.Getenv("PAYMENTS_TABLE_NAME")
 )
 

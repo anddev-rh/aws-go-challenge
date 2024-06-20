@@ -97,7 +97,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
-                Resource: !GetAtt PaymentsQueue.Arn
+                Resource: !GetAtt OrdersQueue.Arn
 
   ordersFunction:
     Type: AWS::Serverless::Function
@@ -141,6 +141,7 @@ Resources:
             Method: POST
       Environment:
         Variables:
+          ORDERS_QUEUE_URL: !GetAtt OrdersQueue.QueueUrl
           PAYMENTS_QUEUE_URL: !GetAtt PaymentsQueue.QueueUrl
           PAYMENTS_TABLE_NAME: !Ref PaymentsServiceTable
 
