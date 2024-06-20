@@ -35,6 +35,15 @@ type CreateOrderEvent struct {
 	Status     utils.Status `json:"status"`
 }
 
+type OrderDB struct {
+	OrderID    string       `json:"order_id"`
+	UserID     string       `json:"user_id"`
+	Item       string       `json:"item"`
+	Quantity   int          `json:"quantity"`
+	TotalPrice int64        `json:"total_price"`
+	Status     utils.Status `json:"status"`
+}
+
 func init() {
 	sess := session.Must(session.NewSession())
 	sqsClient = sqs.New(sess)
@@ -78,7 +87,16 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		Status:     utils.StatusIncompleted,
 	}
 
-	err = utils.SaveToDynamoDB(ordersTableName, myEvent.OrderID, validatedRequest)
+	var orderForDB = OrderDB{
+		OrderID:    myEvent.OrderID,
+		UserID:     validatedRequest.UserID,
+		Item:       validatedRequest.Item,
+		Quantity:   validatedRequest.Quantity,
+		TotalPrice: validatedRequest.TotalPrice,
+		Status:     myEvent.Status,
+	}
+
+	err = utils.SaveToDynamoDB(ordersTableName, myEvent.OrderID, orderForDB)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,

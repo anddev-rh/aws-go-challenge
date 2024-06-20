@@ -17,7 +17,7 @@ import (
 
 var (
 	sqsClient         *sqs.SQS
-	queueURL          = os.Getenv("ORDERS_QUEUE_URL")
+	ordersQueueURL    = os.Getenv("ORDERS_QUEUE_URL")
 	paymentsTableName = os.Getenv("PAYMENTS_TABLE_NAME")
 )
 
@@ -56,7 +56,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}, nil
 	}
 
-	validatedRequest.Status = utils.StatusCompleted
+	validatedRequest.Status = "completed"
 
 	err = utils.SaveToDynamoDB(paymentsTableName, validatedRequest.OrderID, validatedRequest)
 	if err != nil {
@@ -72,7 +72,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	_, err = sqsClient.SendMessage(&sqs.SendMessageInput{
-		QueueUrl:    aws.String(queueURL),
+		QueueUrl:    aws.String(ordersQueueURL),
 		MessageBody: aws.String(string(eventBody)),
 	})
 	if err != nil {

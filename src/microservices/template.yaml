@@ -69,7 +69,18 @@ Resources:
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
-                Resource: !GetAtt PaymentsQueue.Arn 
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: 
+                - !GetAtt PaymentsQueue.Arn 
+                - !GetAtt OrdersQueue.Arn 
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
 
   PaymentsFunctionRole:
     Type: AWS::IAM::Role
@@ -97,7 +108,15 @@ Resources:
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
-                Resource: !GetAtt OrdersQueue.Arn
+                Resource: 
+                  - !GetAtt PaymentsQueue.Arn 
+                  - !GetAtt OrdersQueue.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
 
   ordersFunction:
     Type: AWS::Serverless::Function
@@ -121,6 +140,26 @@ Resources:
           ORDERS_QUEUE_URL: !GetAtt OrdersQueue.QueueUrl
           PAYMENTS_QUEUE_URL: !GetAtt PaymentsQueue.QueueUrl
           ORDERS_TABLE_NAME: !Ref OrdersTable
+
+  OrdersSQSHandlerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: ordersSQSHandler/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+      - x86_64
+      Role: !GetAtt OrdersFunctionRole.Arn
+      Environment:
+        Variables:
+          ORDERS_TABLE_NAME: !Ref OrdersTable
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt OrdersQueue.Arn
 
   paymentsFunction:
     Type: AWS::Serverless::Function
@@ -161,3 +200,7 @@ Outputs:
   paymentsFunctionIamRole:
     Description: Implicit IAM Role created for payments function
     Value: !GetAtt PaymentsFunctionRole.Arn
+  OrdersSQSHandlerFunctionArn:
+    Description: Lambda Function ARN for the OrdersSQSHandlerFunction
+    Value: !GetAtt OrdersSQSHandlerFunction.Arn
+
