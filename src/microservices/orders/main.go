@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	sqsClient       *sqs.SQS
-	queueURL        = os.Getenv("ORDERS_QUEUE_URL")
-	ordersTableName = os.Getenv("ORDERS_TABLE_NAME")
+	sqsClient        *sqs.SQS
+	paymentsQueueUrl = os.Getenv("PAYMENTS_QUEUE_URL")
+	ordersTableName  = os.Getenv("ORDERS_TABLE_NAME")
 )
 
 type CreateOrderRequest struct {
@@ -30,8 +30,9 @@ type CreateOrderRequest struct {
 }
 
 type CreateOrderEvent struct {
-	OrderID    string `json:"order_id"`
-	TotalPrice int64  `json:"total_price"`
+	OrderID    string       `json:"order_id"`
+	TotalPrice int64        `json:"total_price"`
+	Status     utils.Status `json:"status"`
 }
 
 func init() {
@@ -74,6 +75,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	myEvent := CreateOrderEvent{
 		OrderID:    uuid.New().String(),
 		TotalPrice: validatedRequest.TotalPrice,
+		Status:     utils.StatusIncompleted,
 	}
 
 	err = utils.SaveToDynamoDB(ordersTableName, myEvent.OrderID, validatedRequest)
@@ -90,7 +92,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	_, err = sqsClient.SendMessage(&sqs.SendMessageInput{
-		QueueUrl:    aws.String(queueURL),
+		QueueUrl:    aws.String(paymentsQueueUrl),
 		MessageBody: aws.String(string(eventBody)),
 	})
 	if err != nil {
