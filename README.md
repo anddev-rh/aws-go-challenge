@@ -4,6 +4,7 @@ Follow this steps to deploy and use
 
 ## 1) Create an IAM User
 Enter in AWS Web
+
 Create a new user in IAM.
 Assign the following permissions:
 - AdministratorAccess
