@@ -69,7 +69,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
-                Resource: !GetAtt OrdersQueue.Arn
+                Resource: !GetAtt PaymentsQueue.Arn 
 
   PaymentsFunctionRole:
     Type: AWS::IAM::Role
@@ -119,6 +119,7 @@ Resources:
       Environment:
         Variables:
           ORDERS_QUEUE_URL: !GetAtt OrdersQueue.QueueUrl
+          PAYMENTS_QUEUE_URL: !GetAtt PaymentsQueue.QueueUrl
           ORDERS_TABLE_NAME: !Ref OrdersTable
 
   paymentsFunction:

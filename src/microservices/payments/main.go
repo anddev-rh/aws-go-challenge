@@ -21,17 +21,9 @@ var (
 	paymentsTableName = os.Getenv("PAYMENTS_TABLE_NAME")
 )
 
-type Status string
-
-const (
-	StatusCompleted Status = "completed"
-	StatusFailed    Status = "failed"
-	StatusPending   Status = "pending"
-)
-
 type ProcessPaymentsRequest struct {
-	OrderID string `json:"order_id"`
-	Status  Status `json:"status"`
+	OrderID string       `json:"order_id"`
+	Status  utils.Status `json:"status"`
 }
 
 func init() {
@@ -49,7 +41,7 @@ func validateProcessPaymentsRequest(body []byte) (*ProcessPaymentsRequest, error
 	if processPaymentsRequest.OrderID == "" {
 		return nil, errors.New("invalid order_id")
 	}
-	if processPaymentsRequest.Status != StatusPending {
+	if processPaymentsRequest.Status != utils.StatusIncompleted {
 		return nil, errors.New("invalid status")
 	}
 	return &processPaymentsRequest, nil
@@ -64,7 +56,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}, nil
 	}
 
-	validatedRequest.Status = StatusCompleted
+	validatedRequest.Status = utils.StatusCompleted
 
 	err = utils.SaveToDynamoDB(paymentsTableName, validatedRequest.OrderID, validatedRequest)
 	if err != nil {
