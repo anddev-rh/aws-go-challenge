@@ -60,3 +60,5 @@ exampleURI: `https://{awslink}.{region}.amazonaws.com/Prod/orders`
 
 ## 4) 
 - Enter in AWS web console and explore DynamoDB , SQS and Lambda to check the interactions
+  
+[DEMO VIDEO](https://drive.google.com/file/d/1UPOzAV-mneNAw2MktOMSUPXJ8J7CEjM2/view?usp=sharing)
