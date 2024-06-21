@@ -30,7 +30,6 @@ func init() {
 }
 
 func updateOrderStatus(orderID string, status string) error {
-	// Primero, obtenemos el ítem actual para no sobrescribir los campos existentes
 	result, err := dynamoDBClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(ordersTableName),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -83,7 +82,6 @@ func handler(request events.SQSEvent) error {
 		err = updateOrderStatus(event.OrderID, string(utils.StatusReady))
 		if err != nil {
 			fmt.Printf("Error updating order status: %v\n", err)
-			// Puedes optar por manejar el error aquí o continuar con el siguiente mensaje
 			continue
 		}
 	}
